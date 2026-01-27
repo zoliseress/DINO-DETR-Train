@@ -1,0 +1,34 @@
+train:
+  epochs: 20
+  batch_size: 16
+  learning_rate: 0.0001
+  weight_decay: 0.0001
+  num_workers: 4
+  
+  # Fine-tuning configuration (set checkpoint_path to enable fine-tuning)
+  # checkpoint_path: null  # Path to checkpoint for fine-tuning (e.g., "lightning_logs/version_0/checkpoints/last.ckpt")
+  checkpoint_path: ""
+  freeze_backbone: true  # Freeze backbone during initial training
+  unfreeze_backbone_at_epoch: -1  # Epoch to unfreeze backbone (-1 = never unfreeze)
+
+data:
+  train_data_dir: "J:/AI_DATA/COCO/train2017"
+  val_data_dir: "J:/AI_DATA/COCO/val2017"
+  train_ann_file: "J:/AI_DATA/COCO/annotations/instances_train2017.json"
+  val_ann_file: "J:/AI_DATA/COCO/annotations/instances_val2017.json"
+
+model:
+  backbone: "vit_base_patch14_dinov2.lvd142m"
+  num_classes: 91
+  hidden_dim: 256
+  num_queries: 100
+  weight_L1: 5.0
+  weight_giou: 2.0
+  weight_bbox: 1.0
+  weight_no_object: 0.1
+
+logging:
+  log_dir: "logs/"
+  log_interval: 10
+  save_model: true
+  checkpoint_dir: "checkpoints/"
