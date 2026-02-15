@@ -1,23 +1,26 @@
 # DETR (DEtection TRansformer) project description
 
 ## Overview
-This project implements a **DETR (DEtection TRansformer)** model using a **DINOv2** backbone for object detection tasks on the COCO 2017 dataset. It leverages PyTorch Lightning for structured training and evaluation.
+This project implements a **DETR (DEtection TRansformer)** model using a **ResNet50** or a **DINOv2** backbone for object detection tasks on the COCO 2017 dataset. It leverages PyTorch Lightning for structured training process. Since the release of DETR more advanced models have been published with better overall performance, but this project aims directly the understanding of the core idea behind all.<br>
+Note: The code is not optimized and the training converges slowly, which makes hard to use with limited resources.
 
 ## Project Structure
 ```
 dino-detr-pl
 ├── doc
-│   └── detr_vs_vit.md       # Differences between DETR and ViT architectures
+│   └── 
+│   ├── detr_vs_vit.md       # Differences between DETR and ViT architectures
+    └── End-to-End Object Detection with Transformers.pdf  # DETR paper
 ├── src
 │   ├── callbacks.py         # Custom callbacks for monitoring training
 │   ├── coco.py              # Data loading and preprocessing for the COCO dataset
 │   ├── datamodule.py        # Data handling
 │   ├── detr.py              # Implementation of the DETR model architecture
-│   ├── detr_utilis.py       # Utility functions (not required for training or inference)
+│   ├── detr_utils.py        # Utility functions (not required for training or inference)
 |   ├── inference.py         # Running inference and visualize the predictions
-│   ├── lightning_module.py  # PyTorch Lightning module for training and validation
-│   ├── matcher.py           # The Hungarian algorithm.
-│   ├── plot.py              # Visualization functions for model predictions (for inference)
+│   ├── lightning_module.py  # PyTorch Lightning wrapper module for the model class
+│   ├── matcher.py           # The Hungarian algorithm
+│   ├── plot.py              # Visualization functions of model predictions (for inference)
 │   └── train.py             # Training loop and logic
 ├── configs
 │   └── default.yaml         # Configuration settings for the project
@@ -41,17 +44,29 @@ pip install -r requirements.txt
 2. **Training the model**: You can train the model using the following command:
 
 ```bash
-python src/train.py --config configs/default.yaml (a config be van egetve, cmd parameterre tenni!)
+python src/train.py --config configs/default.yaml
 ```
 
-3. **Running inference**: To run inference on images, execute:
+3. **Running inference**: To run inference on an example image, execute:
 
 ```bash
 python src/inference.py
 ```
 
 ## Configuration
-The configuration file `configs/default.yaml` contains hyperparameters and paths that can be adjusted for training and evaluation.
+The configuration file `configs/default.yaml` contains hyperparameters and paths that can be adjusted for training.
+
+## Monitoring Training
+
+Training logs are saved to:
+```
+lightning_logs/version_X/
+```
+
+View with TensorBoard:
+```bash
+tensorboard --logdir lightning_logs/
+```
 
 ## The paper
 
@@ -60,7 +75,7 @@ The original method is presented in this paper:
 
 For more information refer to FAIR's deepwiki: https://deepwiki.com/facebookresearch/detr/1-detr-overview
 
-## How DETR Detects Objects
+## How DETR detects objects
 
 Key features of the original method.
 
@@ -105,9 +120,4 @@ Below are some of the disadvantages of the DETR architecture.
 
 - High Computational Resources: training and using DETR can be computationally intensive, especially for large models and high-resolution images. This may limit its accessibility for researchers and practitioners without access to powerful hardware.
 - Fixed Object Query Count: DETR requires specifying the number of object queries in advance, which can be a limitation when dealing with scenes containing varying numbers of objects. An incorrect number of queries may lead to missed detections or inefficiencies.
-
-
-Notes:
-
-BB: center vs corner
-Center format is preferred over corner format for training in DETR due to several technical advantages that align with the transformer architecture and regression learning: smoother loss, more stable optimization, better for Hungarian matching.
+- The parallel processing is a great feature, but the overall training speed is slow, later model variations perform much better.
