@@ -70,8 +70,7 @@ tensorboard --logdir lightning_logs/
 
 ## The paper
 
-The original method is presented in this paper:
-[Open the PDF](doc/End-to-End Object Detection with Transformers.pdf)
+The original method is presented in this paper: https://arxiv.org/abs/2005.12872
 
 For more information refer to FAIR's deepwiki: https://deepwiki.com/facebookresearch/detr/1-detr-overview
 
