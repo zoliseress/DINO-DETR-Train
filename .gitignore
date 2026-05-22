@@ -1,0 +1,6 @@
+# Ignore Python bytecode files and cache directories
+*.pyc
+__pycache__/*
+
+# Ignore PyTorch Lightning logs
+lightning_logs/
