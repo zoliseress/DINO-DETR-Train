@@ -61,9 +61,9 @@ class DETR_Lightning(TrainingDiagnostics, pl.LightningModule):
         # Scheduler defaults are validation-driven to avoid overfitting to train loss.
         train_cfg = config.get("train", {})
         val_monitor_enabled = bool(config.get("validation_monitor", {}).get("enabled", True))
-        default_monitor = "val_epoch_score" if val_monitor_enabled else "train_loss"
+        default_monitor = "val_loss" if val_monitor_enabled else "train_loss"
         self.lr_scheduler_monitor = str(train_cfg.get("lr_scheduler_monitor", default_monitor))
-        if self.lr_scheduler_monitor.endswith("loss") or self.lr_scheduler_monitor == "val_epoch_score":
+        if self.lr_scheduler_monitor.endswith("loss") or self.lr_scheduler_monitor == "val_loss":
             default_mode = "min"
         elif self.lr_scheduler_monitor.startswith("val_"):
             default_mode = "max"
@@ -130,10 +130,6 @@ class DETR_Lightning(TrainingDiagnostics, pl.LightningModule):
         """Log system RAM and GPU VRAM usage after each epoch."""
         self._log_memory_usage()
         self._log_timing_usage()
-
-    def _should_log_debug_step(self) -> bool:
-        """Return True when a debug step metric should be emitted."""
-        return self.debug_log_on_step and (self.global_step % self.debug_log_every_n_steps == 0)
 
     def generalized_box_iou(self, boxes1, boxes2):
         """
@@ -311,6 +307,7 @@ class DETR_Lightning(TrainingDiagnostics, pl.LightningModule):
         }
 
     def training_step(self, batch, batch_idx):
+        """Training step: compute losses and log metrics."""
 
         step_start_ts = 0.0
         if self.profile_timing_enabled:
@@ -353,12 +350,9 @@ class DETR_Lightning(TrainingDiagnostics, pl.LightningModule):
 
         loss = main_losses["loss"]
         loss_cls = main_losses["loss_cls"]
+        loss_bbox = main_losses["loss_bbox"]
         loss_l1 = main_losses["loss_l1"]
         loss_giou = main_losses["loss_giou"]
-        loss_bbox = main_losses["loss_bbox"]
-        matched_indices = main_losses["matched_indices"]
-        target_classes = main_losses["target_classes"]
-        background_class = main_losses["background_class"]
 
         # Auxiliary decoder supervision: apply the same loss to intermediate decoder outputs.
         aux_outputs = preds.get("aux_outputs", [])
@@ -376,7 +370,6 @@ class DETR_Lightning(TrainingDiagnostics, pl.LightningModule):
                 aux_loss_values.append(aux_losses["loss"])
 
             aux_loss = torch.stack(aux_loss_values).sum()
-            # Official DETR-style aggregation sums final and auxiliary losses.
             loss = main_losses["loss"] + aux_loss
         else:
             aux_loss = preds["pred_logits"].new_tensor(0.0)
@@ -392,77 +385,30 @@ class DETR_Lightning(TrainingDiagnostics, pl.LightningModule):
             # Return zero loss to skip this batch (prevents training crash)
             loss = torch.tensor(0.0, device=self.device, dtype=torch.float32, requires_grad=True)
 
-        log_debug_step = self._should_log_debug_step()
-
         # Logging.
         if self.profile_timing_enabled:
             t0 = self._mark_time()
         
         self.log('train_loss', loss, on_step=False, on_epoch=True, prog_bar=True)
 
-        if log_debug_step:
-            self.log('step_train_loss', loss, on_step=True, on_epoch=False, prog_bar=True)
         if self.trainer is not None and self.trainer.optimizers:
             optimizer = self.trainer.optimizers[0]
             head_lr = optimizer.param_groups[0]["lr"]
             self.log('learning_rate', head_lr, on_step=False, on_epoch=True)
-            self.log('learning_rate_head', head_lr, on_step=False, on_epoch=True)
-            if log_debug_step:
-                self.log('step_learning_rate', head_lr, on_step=True, on_epoch=False)
-                self.log('step_learning_rate_head', head_lr, on_step=True, on_epoch=False)
             if len(optimizer.param_groups) > 1:
                 backbone_lr = optimizer.param_groups[1]["lr"]
                 self.log('learning_rate_backbone', backbone_lr, on_step=False, on_epoch=True)
-                if log_debug_step:
-                    self.log('step_learning_rate_backbone', backbone_lr, on_step=True, on_epoch=False)
         
         if isinstance(loss_cls, torch.Tensor):
             self.log('train_loss_cls', loss_cls, on_step=False, on_epoch=True)
-            if log_debug_step:
-                self.log('step_train_loss_cls', loss_cls, on_step=True, on_epoch=False)
         if isinstance(loss_l1, torch.Tensor):
             self.log('train_loss_l1', loss_l1, on_step=False, on_epoch=True)
-            if log_debug_step:
-                self.log('step_train_loss_l1', loss_l1, on_step=True, on_epoch=False)
         if isinstance(loss_giou, torch.Tensor):
             self.log('train_loss_giou', loss_giou, on_step=False, on_epoch=True)
-            if log_debug_step:
-                self.log('step_train_loss_giou', loss_giou, on_step=True, on_epoch=False)
         if isinstance(loss_bbox, torch.Tensor):
             self.log('train_loss_bbox', loss_bbox, on_step=False, on_epoch=True)
-            if log_debug_step:
-                self.log('step_train_loss_bbox', loss_bbox, on_step=True, on_epoch=False)
         if aux_outputs:
             self.log('train_loss_aux', aux_loss, on_step=False, on_epoch=True)
-            if log_debug_step:
-                self.log('step_train_loss_aux', aux_loss, on_step=True, on_epoch=False)
-
-        # Lightweight debug metrics
-        matched_counts = torch.tensor([len(pairs) for pairs in matched_indices], device=self.device, dtype=torch.float32)
-        if matched_counts.numel() > 0:
-            self.log('train_matched_avg', matched_counts.mean(), on_step=False, on_epoch=True)
-            if log_debug_step:
-                self.log('step_train_matched_avg', matched_counts.mean(), on_step=True, on_epoch=False)
-        unique_gt = set()
-        for ann_list in batch_targets:
-            for ann in ann_list:
-                unique_gt.add(int(ann["category_id"]))
-        self.log('train_gt_unique_classes', float(len(unique_gt)), on_step=False, on_epoch=True)
-        if log_debug_step:
-            self.log('step_train_gt_unique_classes', float(len(unique_gt)), on_step=True, on_epoch=False)
-
-        # Background ratio and prediction diversity (debug)
-        bg_ratio = (target_classes == background_class).float().mean()
-        self.log('train_bg_ratio', bg_ratio, on_step=False, on_epoch=True)
-        pred_logits_std = preds["pred_logits"].std(dim=1).mean()
-        pred_boxes_std = preds["pred_boxes"].std(dim=1).mean()
-        self.log('train_pred_logits_std', pred_logits_std, on_step=False, on_epoch=True)
-        self.log('train_pred_boxes_std', pred_boxes_std, on_step=False, on_epoch=True)
-        
-        if log_debug_step:
-            self.log('step_train_bg_ratio', bg_ratio, on_step=True, on_epoch=False)
-            self.log('step_train_pred_logits_std', pred_logits_std, on_step=True, on_epoch=False)
-            self.log('step_train_pred_boxes_std', pred_boxes_std, on_step=True, on_epoch=False)
 
         if self.profile_timing_enabled:
             self._timing_logging_sum += self._elapsed_since(t0)
@@ -472,6 +418,8 @@ class DETR_Lightning(TrainingDiagnostics, pl.LightningModule):
         return loss
 
     def validation_step(self, batch, batch_idx):
+        """Validation step: compute losses and log metrics."""
+
         images, targets = batch
         preds = self(images)
 
@@ -493,9 +441,9 @@ class DETR_Lightning(TrainingDiagnostics, pl.LightningModule):
 
         val_loss = main_losses["loss"]
         val_loss_cls = main_losses["loss_cls"]
+        val_loss_bbox = main_losses["loss_bbox"]
         val_loss_l1 = main_losses["loss_l1"]
         val_loss_giou = main_losses["loss_giou"]
-        val_loss_bbox = main_losses["loss_bbox"]
 
         aux_outputs = preds.get("aux_outputs", [])
         if aux_outputs:
@@ -513,11 +461,8 @@ class DETR_Lightning(TrainingDiagnostics, pl.LightningModule):
             val_loss = val_loss + val_aux_loss
             self.log('val_loss_aux', val_aux_loss, on_step=False, on_epoch=True)
 
-        # Keep monitor key name but use positive, decreasing score (loss-like).
-        val_epoch_score = val_loss
-
+        # Logging main validation losses.
         self.log('val_loss', val_loss, on_step=False, on_epoch=True, prog_bar=True)
-        self.log('val_epoch_score', val_epoch_score, on_step=False, on_epoch=True, prog_bar=True)
         self.log('val_loss_cls', val_loss_cls, on_step=False, on_epoch=True)
         self.log('val_loss_l1', val_loss_l1, on_step=False, on_epoch=True)
         self.log('val_loss_giou', val_loss_giou, on_step=False, on_epoch=True)
@@ -527,7 +472,10 @@ class DETR_Lightning(TrainingDiagnostics, pl.LightningModule):
 
     def configure_optimizers(self):
         """
+        Optimizer and learning rate scheduler configuration.
+        Uses separate learning rates for backbone and head.
         """
+
         backbone_params = list(self.model.backbone.parameters())
         backbone_param_ids = {id(p) for p in backbone_params}
         head_params = [p for p in self.parameters() if id(p) not in backbone_param_ids]
