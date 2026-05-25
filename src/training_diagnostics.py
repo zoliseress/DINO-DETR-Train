@@ -4,12 +4,12 @@ logging.
 """
 import time
 
-import torch
-
 try:
     import psutil
 except ImportError:
     psutil = None
+
+import torch
 
 
 class TrainingDiagnostics:
@@ -35,9 +35,10 @@ class TrainingDiagnostics:
         self._sync_for_timing()
         return time.perf_counter() - start_ts
 
-    def _log_timing_usage(self) -> None:
+    def _log_timing_usage(self, tb_logging: bool = False) -> None:
         """
         Log timing usage for different stages of the training step.
+        Prints to console by default, and also logs to TensorBoard if tb_logging=True.
 
         Note: Called at the end of each training epoch to track timing trends
         over time.
@@ -61,16 +62,17 @@ class TrainingDiagnostics:
         aux_loss_pct = 100.0 * (aux_loss_avg / total_denom)
         logging_pct = 100.0 * (logging_avg / total_denom)
 
-        self.log("timing_step_forward_s", forward_avg, on_step=False, on_epoch=True, logger=True)
-        self.log("timing_step_main_loss_s", main_loss_avg, on_step=False, on_epoch=True, logger=True)
-        self.log("timing_step_aux_loss_s", aux_loss_avg, on_step=False, on_epoch=True, logger=True)
-        self.log("timing_step_logging_s", logging_avg, on_step=False, on_epoch=True, logger=True)
-        self.log("timing_step_total_s", step_total_avg, on_step=False, on_epoch=True, logger=True)
+        if tb_logging:
+            self.log("timing_step_forward_s", forward_avg, on_step=False, on_epoch=True, logger=True)
+            self.log("timing_step_main_loss_s", main_loss_avg, on_step=False, on_epoch=True, logger=True)
+            self.log("timing_step_aux_loss_s", aux_loss_avg, on_step=False, on_epoch=True, logger=True)
+            self.log("timing_step_logging_s", logging_avg, on_step=False, on_epoch=True, logger=True)
+            self.log("timing_step_total_s", step_total_avg, on_step=False, on_epoch=True, logger=True)
 
-        self.log("timing_pct_forward", forward_pct, on_step=False, on_epoch=True, logger=True)
-        self.log("timing_pct_main_loss", main_loss_pct, on_step=False, on_epoch=True, logger=True)
-        self.log("timing_pct_aux_loss", aux_loss_pct, on_step=False, on_epoch=True, logger=True)
-        self.log("timing_pct_logging", logging_pct, on_step=False, on_epoch=True, logger=True)
+            self.log("timing_pct_forward", forward_pct, on_step=False, on_epoch=True, logger=True)
+            self.log("timing_pct_main_loss", main_loss_pct, on_step=False, on_epoch=True, logger=True)
+            self.log("timing_pct_aux_loss", aux_loss_pct, on_step=False, on_epoch=True, logger=True)
+            self.log("timing_pct_logging", logging_pct, on_step=False, on_epoch=True, logger=True)
 
         if self.profile_timing_print:
             print(
@@ -82,9 +84,10 @@ class TrainingDiagnostics:
                 f"logging={logging_avg:.3f}s ({logging_pct:.1f}%)"
             )
 
-    def _log_memory_usage(self) -> None:
+    def _log_memory_usage(self, tb_logging: bool = False) -> None:
         """
         Log system RAM and GPU VRAM usage.
+        By default, prints to console. If tb_logging=True, also logs to TensorBoard.
 
         Note: Called at the end of each training epoch to track memory usage trends
         over time.
@@ -119,10 +122,11 @@ class TrainingDiagnostics:
             sys_used_gb = vm.used / (1024 ** 3)  # System RAM used by all processes
             sys_total_gb = vm.total / (1024 ** 3)  # Total system RAM
 
-            self.log("mem_ram_rss_gb", rss_gb, on_step=False, on_epoch=True, logger=True)
-            self.log("mem_ram_vms_gb", vms_gb, on_step=False, on_epoch=True, logger=True)
-            self.log("mem_ram_system_used_gb", sys_used_gb, on_step=False, on_epoch=True, logger=True)
-            self.log("mem_ram_system_pct", float(vm.percent), on_step=False, on_epoch=True, logger=True)
+            if tb_logging:
+                self.log("mem_ram_rss_gb", rss_gb, on_step=False, on_epoch=True, logger=True)
+                self.log("mem_ram_vms_gb", vms_gb, on_step=False, on_epoch=True, logger=True)
+                self.log("mem_ram_system_used_gb", sys_used_gb, on_step=False, on_epoch=True, logger=True)
+                self.log("mem_ram_system_pct", float(vm.percent), on_step=False, on_epoch=True, logger=True)
 
             print(
                 f"RAM after epoch {epoch}: "
@@ -139,10 +143,11 @@ class TrainingDiagnostics:
             vram_peak_alloc_gb = torch.cuda.max_memory_allocated(device_idx) / (1024 ** 3)
             vram_peak_reserved_gb = torch.cuda.max_memory_reserved(device_idx) / (1024 ** 3)
 
-            self.log("mem_vram_alloc_gb", vram_alloc_gb, on_step=False, on_epoch=True, logger=True)
-            self.log("mem_vram_reserved_gb", vram_reserved_gb, on_step=False, on_epoch=True, logger=True)
-            self.log("mem_vram_peak_alloc_gb", vram_peak_alloc_gb, on_step=False, on_epoch=True, logger=True)
-            self.log("mem_vram_peak_reserved_gb", vram_peak_reserved_gb, on_step=False, on_epoch=True, logger=True)
+            if tb_logging:
+                self.log("mem_vram_alloc_gb", vram_alloc_gb, on_step=False, on_epoch=True, logger=True)
+                self.log("mem_vram_reserved_gb", vram_reserved_gb, on_step=False, on_epoch=True, logger=True)
+                self.log("mem_vram_peak_alloc_gb", vram_peak_alloc_gb, on_step=False, on_epoch=True, logger=True)
+                self.log("mem_vram_peak_reserved_gb", vram_peak_reserved_gb, on_step=False, on_epoch=True, logger=True)
 
             print(
                 f"VRAM after epoch {epoch}: "
