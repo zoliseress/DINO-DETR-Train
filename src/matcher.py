@@ -5,16 +5,26 @@ import torch.nn.functional as F
 from torchvision.ops import generalized_box_iou as tv_generalized_box_iou
 
 
-def generalized_box_iou(boxes1, boxes2):
+def generalized_box_iou(
+        boxes1: torch.Tensor,
+        boxes2: torch.Tensor
+    ) -> torch.Tensor:
     """
-    Compute GIoU between two sets of boxes (in [cx, cy, w, h] format).
+    Compute GIoU between two sets of boxes (in [cx, cy, w, h] format)
+    for building the Hungarian matching cost matrix.
     
-    Args:
-        boxes1: [N, 4] in [cx, cy, w, h]
-        boxes2: [M, 4] in [cx, cy, w, h]
+    Parameters:
+    -----------
+
+    boxes1: torch.Tensor
+        [N, 4] in [cx, cy, w, h] format normalized to [0,1].
+    boxes2: torch.Tensor
+        [M, 4] in [cx, cy, w, h] format normalized to [0,1].
     
     Returns:
-        giou: [N, M] GIoU values
+    --------
+    torch.Tensor
+        [N, M] GIoU values
     """
     # Convert center format to corner format [x0, y0, x1, y1].
     cx1, cy1, w1, h1 = boxes1.unbind(-1)
@@ -30,22 +40,40 @@ def generalized_box_iou(boxes1, boxes2):
     return tv_generalized_box_iou(boxes1_xyxy, boxes2_xyxy)
 
 
-def hungarian_matching(preds_logits, preds_boxes, targets, device):
+def hungarian_matching(
+        preds_logits: torch.Tensor,
+        preds_boxes: torch.Tensor,
+        targets: list,
+        device: torch.device
+    ) -> list[list[tuple[int, int]]]:
     """
     Match predictions to ground truth using Hungarian algorithm.
     Uses Facebook DETR cost weighting: cost_class=1, cost_bbox=5.0, cost_giou=2.0
     
-    Args:
-        preds_logits: [batch_size, num_queries, num_classes]
-        preds_boxes: [batch_size, num_queries, 4] in [cx, cy, w, h] format normalized
-        targets: list of COCO-style annotations per image (center format)
-        device: torch device
-    
+    Parameters:
+    -----------
+    preds_logits: torch.Tensor
+        [batch_size, num_queries, num_classes] raw class logits from the model.
+    preds_boxes: torch.Tensor
+        [batch_size, num_queries, 4] predicted boxes in [cx, cy, w, h] format normalized to [0,1].
+    targets: list
+        List of length batch_size, where each element is a list of dicts with keys:
+        - "category_id": int class ID
+        - "bbox": [cx, cy, w, h] in original image coordinates (will be normalized inside)
+            Optionally, each dict can also have "resized_size": (h, w) if the image was resize
+            during preprocessing.
+    device: torch.device
+        Device to perform computations on.
+
     Returns:
-        matched_indices: list of (pred_idx, gt_idx) tuples per image
+    -------
+    list[list[tuple[int, int]]]
+        A list of length batch_size, where each element is a list of (pred_idx, gt_idx) tuples
+        indicating the matched pairs.
     """
+
     batch_size = preds_logits.shape[0]
-    matched_indices = []
+    matched_indices: list[list[tuple[int, int]]] = []
     
     for b in range(batch_size):
 
@@ -97,23 +125,25 @@ def hungarian_matching(preds_logits, preds_boxes, targets, device):
         giou_vals = generalized_box_iou(boxes, gt_boxes_norm)  # [num_queries, num_gts]
         giou_costs = (1 - giou_vals).transpose(0, 1)
         
-        # Combined cost: Facebook DETR weighting
+        # Combined cost: Facebook DETR weighting.
         # cost = cost_class + 5.0 * cost_bbox + 2.0 * cost_giou
         cost_matrix = class_costs + 5.0 * bbox_costs + 2.0 * giou_costs  # [num_gts, num_queries]
 
-        # Check for NaN/Inf and replace with large values
+        # Check for NaN/Inf and replace with large values.
         cost_matrix = torch.nan_to_num(cost_matrix, nan=1e6, posinf=1e6, neginf=1e6)
 
+        # Need to move to CPU, because scipy's linear_sum_assignment does not work
+        # with GPU tensors.
         cost_matrix = cost_matrix.cpu().detach().numpy()
         
-        # Check again after conversion
+        # Check again after conversion.
         if np.isnan(cost_matrix).any() or np.isinf(cost_matrix).any():
             print(f"Warning: Invalid values in cost matrix at batch {b}")
             # Skip matching for this batch
             matched_indices.append([])
             continue
 
-        # Hungarian algorithm: find optimal assignment
+        # Hungarian algorithm: find optimal assignment.
         gt_indices, pred_indices = linear_sum_assignment(cost_matrix)
         matched_indices.append(list(zip(pred_indices, gt_indices)))
     
