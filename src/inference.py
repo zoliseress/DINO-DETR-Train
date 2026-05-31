@@ -1,7 +1,6 @@
 
 import numpy as np
 import torch
-import torchvision.transforms as T
 from lightning_module import DETR_Lightning
 from pycocotools.coco import COCO
 from torchvision.datasets import CocoDetection
@@ -69,8 +68,8 @@ if __name__ == "__main__":
     print("  Loading model checkpoint...")
     device = "cuda" if torch.cuda.is_available() else "cpu"
 
-    ckpt_path = "lightning_logs/version_6/checkpoints/last.ckpt"
-    config = load_config("lightning_logs/version_6/config.yaml")
+    ckpt_path = "lightning_logs/version_9/checkpoints/last.ckpt"
+    config = load_config("lightning_logs/version_9/config.yaml")
 
     model = DETR_Lightning.load_from_checkpoint(ckpt_path, config=config, weights_only=False)
     model.eval()
@@ -80,8 +79,8 @@ if __name__ == "__main__":
 
     print("  Get data...")
     idx = 5  # person + ski
-    idx = 10  # person, boat, bird, handbag
-    idx = 13  # sandwich + bowl
+    # idx = 10  # person, boat, bird, handbag
+    # idx = 13  # sandwich + bowl
 
     # Post-processing presets for visualization.
     # - clean: fewer boxes, higher precision
@@ -116,11 +115,11 @@ if __name__ == "__main__":
     # Resizing/normalization transform for inference (must match training transform).
     transform = build_transform(config)
 
-    # Load and preprocess image
+    # Load and preprocess image.
     original_dataset = CocoDetection(
         root=config["data"]["val_data_dir"],
         annFile=config["data"]["val_ann_file"],
-        transform=None  # Get original first
+        transform=None
     )
 
     # Load COCO class names for display
@@ -214,7 +213,7 @@ if __name__ == "__main__":
     if True:
         print(f"Resize mapping: resized=({resized_w}x{resized_h}) -> orig=({orig_w}x{orig_h})")
 
-    # Convert label IDs to class names
+    # Convert label IDs to class names.
     class_label_strs = [
         class_names.get(int(label_id), f"Unknown({label_id})") for label_id in selected_labels
     ]
@@ -241,7 +240,7 @@ if __name__ == "__main__":
 
     original_img_tensor = ToTensor()(original_img_pil)
 
-    # Display with original image, predicted boxes (green), and ground truth boxes (red)
+    # Display with original image, predicted boxes (green), and ground truth boxes (red).
     show_image_with_boxes(
         original_img_tensor,
         boxes_px,
