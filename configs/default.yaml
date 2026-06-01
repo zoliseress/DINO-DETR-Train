@@ -1,0 +1,85 @@
+
+data:
+  # Lower input_size speeds up debug iterations significantly (e.g. 640 or 512).
+  # Use 800 for final ResNet training runs if needed.
+  input_size: 518  # 518 for DINOv2, 480 for ResNet
+  train_data_dir: ""  # local path
+  val_data_dir: ""    # local path
+  train_ann_file: ""  # local path
+  val_ann_file: ""    # local path
+
+  num_workers: 2
+  pin_memory: false
+  persistent_workers: false
+  prefetch_factor: 2
+
+# Memory:
+#  - Batch size 32 with bf16-mixed precision and input_size 480:
+#    - 2.6 GB VRAM for a train batch when the backbone is freezed (ResNet50, original DETR)
+#    - 8.8 GB VRAM for a train batch when the backbone is unfrozen (ResNet50, original DETR)
+#  - Batch size 32 with bf16-mixed precision and input_size 480:
+#    - 2.9 GB VRAM for a train batch when the backbone is freezed (ResNet50, conditional DETR)
+#    - 10.4 GB VRAM for a train batch when the backbone is unfrozen (ResNet50, conditional DETR)
+#  - Batch size 16 with bf16-mixed precision and input_size 518:
+#    - 4.8 GB VRAM for a train batch when the backbone is freezed (DINOv2, conditional DETR)
+#    - 13.8 GB VRAM for a train batch when the backbone is unfrozen (DINOv2, conditional DETR)
+
+train:
+  epochs: 20
+  limit_train_batches: 1.0  # Keep small for fast iteration, use 1.0/-1 for full training.
+  max_steps: -1  # Stop training after this many steps (-1 for no limit).
+
+  batch_size: 16
+  precision: "bf16-mixed"
+  learning_rate: 0.00001
+  backbone_learning_rate: 0.000001
+  weight_decay: 0.0001
+  gradient_clip_val: 0.1
+
+  lr_scheduler_monitor: "val_loss"
+  lr_scheduler_mode: "min"
+  lr_scheduler_factor: 0.1
+  lr_scheduler_patience: 10
+  lr_scheduler_min_lr: 0.0000001
+
+  debug_log_on_step: true
+  debug_log_every_n_steps: 25
+
+  profile_diagnostics_enabled: true
+  profile_memory_enabled: true
+  profile_timing_enabled: true
+  profile_timing_cuda_sync: false
+  profile_timing_print: true
+
+  # Fine-tuning configuration (set checkpoint_path to enable fine-tuning)
+  checkpoint_path: null
+  # checkpoint_path: "lightning_logs/version_0/checkpoints/last.ckpt"  # example
+  freeze_backbone: false
+  unfreeze_backbone_at_epoch: -1
+
+validation_monitor:
+  enabled: true
+  num_images: 1000  # Subset of the full validation set (full set has 5000 images).
+  start_idx: 0  # Starting index for the validation subset.
+  batch_size: 16
+
+model:
+  # Backbone options:
+  # - DINOv2 ViTs: vit_base_patch14_dinov2.lvd142m, vit_small_patch14_dinov2.lvd142m, ...
+  # - ResNet: resnet50, resnet101, ...
+  # Preprocessing switches automatically based on this value.
+  backbone: "vit_base_patch14_dinov2.lvd142m"
+  use_conditional_decoder: true  # Set true to use Conditional DETR-style decoder layers.
+  num_classes: 91  #  While the COCO dataset API defines 91 class labels (due to placeholders and non-used categories), only 80 of them are actually used in the standard dataset annotations.
+  hidden_dim: 256
+  num_queries: 100
+  weight_L1: 5.0          # 5 in the original paper
+  weight_giou: 2.0        # 2 in the original paper
+  weight_bbox: 1.0        # 1 in the original paper
+  weight_no_object: 0.1  # 0.1 in the original paper?
+
+logging:
+  log_dir: "logs/"        # not used?
+  log_interval: 10
+  save_model: true
+  checkpoint_dir: "checkpoints/"
