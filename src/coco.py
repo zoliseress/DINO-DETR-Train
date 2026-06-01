@@ -11,7 +11,7 @@ def build_transform(config: dict) -> T.Compose:
     """
     Build a torchvision transform pipeline based on the backbone type and image size
     specified in the config.
-        1. ResNet-style preprocessing: resize to fixed size (e.g., 800x800),
+        1. ResNet-style preprocessing: resize to fixed size (e.g., 480x480),
            ImageNet normalization.
         2. DINOv2-style preprocessing: resize to multiple of patch size (e.g., 518x518),
            no normalization.
@@ -33,9 +33,9 @@ def build_transform(config: dict) -> T.Compose:
 
     # ResNet-style preprocessing (fixed-size to keep batch stackable).
     if "resnet" in backbone_name:
-        input_size = int(data_cfg.get("input_size", 800))
+        input_size = int(data_cfg.get("input_size", 480))
         return T.Compose([
-            T.Resize((input_size, input_size)),  #(800, 800) for ResNet50/101; (640, 640) for faster debug iterations
+            T.Resize((input_size, input_size)),  #  (480, 480) for ResNet50/101
             T.ToTensor(),
             T.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
         ])
