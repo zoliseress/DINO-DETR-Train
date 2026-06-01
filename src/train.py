@@ -1,6 +1,7 @@
 
 import argparse
 import os
+import shutil
 import sys
 from pathlib import Path
 
@@ -84,6 +85,7 @@ class CustomTrainer:
             self, model: torch.nn.Module,
             dataloader: torch.utils.data.DataLoader,
             val_dataloader: torch.utils.data.DataLoader | None = None,
+            config_path: str = "configs/default.yaml",
             max_epochs: int = 10,
             limit_train_batches: float | int = 1.0,
             max_steps: int = -1,
@@ -98,6 +100,11 @@ class CustomTrainer:
             The model to be trained.
         dataloader : torch.utils.data.DataLoader
             DataLoader providing the training data.
+        val_dataloader : torch.utils.data.DataLoader | None, optional
+            DataLoader providing the validation data. If None, no validation is done.
+        config_path : str, optional
+            Path to the YAML config file used for this training run. The config will
+            be copied to the run directory for reference.
         max_epochs : int, optional
             Maximum number of training epochs, by default 10.
         limit_train_batches : float | int, optional
@@ -114,6 +121,7 @@ class CustomTrainer:
         self.model = model
         self.dataloader = dataloader
         self.val_dataloader = val_dataloader
+        self.config_path = Path(config_path)
         self.max_epochs = max_epochs
         self.limit_train_batches = limit_train_batches
         self.max_steps = max_steps
@@ -121,8 +129,24 @@ class CustomTrainer:
         self.gradient_clip_val = float(gradient_clip_val)
         self.precision = str(precision)
 
+    def _copy_config_to_run_dir(self, tb_logger: TensorBoardLogger) -> None:
+        """
+        Copy the input config into the current Lightning version directory.
+        """
+
+        source_config = self.config_path.expanduser()
+        if not source_config.exists():
+            raise FileNotFoundError(f"Config file not found: {source_config}")
+
+        run_dir = Path(tb_logger.log_dir)
+        run_dir.mkdir(parents=True, exist_ok=True)
+
+        target_config = run_dir / "config.yaml"
+        shutil.copy2(source_config, target_config)
+
     def train(self):
-        """Run the training process.
+        """
+        Run the training process.
         1. Set up callbacks (e.g., model checkpointing).
         2. Create TensorBoard logger.
         3. Initialize PyTorch Lightning Trainer and start training.
@@ -137,11 +161,11 @@ class CustomTrainer:
 
         if self.val_dataloader is not None:
             # Standard Lightning validation loop computes val metrics.
-            checkpoint_monitor = "val_epoch_score"
+            checkpoint_monitor = "val_loss"
             checkpoint_mode = "min"
             checkpoint_filename = (
                 "best_epoch={epoch}-step={step}-"
-                "val_score={val_epoch_score:.4f}-train_loss={train_loss:.4f}"
+                "val_loss={val_loss:.4f}-train_loss={train_loss:.4f}"
             )
 
         best_save_checkpoint = ModelCheckpoint(
@@ -184,6 +208,8 @@ class CustomTrainer:
             callbacks=callbacks,
             limit_train_batches=self.limit_train_batches,
         )
+
+        self._copy_config_to_run_dir(tb_logger)
 
         trainer.fit(
             model=self.model,
@@ -274,6 +300,7 @@ if __name__ == "__main__":
         model,
         train_dataloader,
         val_dataloader=val_dataloader,
+        config_path=args.config,
         max_epochs=train_cfg["epochs"],
         limit_train_batches=limit_train_batches,
         max_steps=max_steps,
@@ -281,6 +308,7 @@ if __name__ == "__main__":
         gradient_clip_val=gradient_clip_val,
         precision=precision,
     )
+    
     trainer.train()
 
     print("\n    ==== FINISH ====\n")

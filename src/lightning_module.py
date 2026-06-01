@@ -27,6 +27,9 @@ class DETR_Lightning(TrainingDiagnostics, pl.LightningModule):
 
         nc = config["model"]["num_classes"]
         backbone, backbone_channels = load_backbone(config["model"]["backbone"])
+        use_conditional_decoder = bool(
+            config["model"].get("use_conditional_decoder", False)
+        )
 
         self.model = DETR(
             backbone,
@@ -34,6 +37,7 @@ class DETR_Lightning(TrainingDiagnostics, pl.LightningModule):
             num_classes=nc,
             hidden_dim=config["model"]["hidden_dim"],
             num_queries=config["model"]["num_queries"],
+            use_conditional_decoder=use_conditional_decoder,
         )
 
         # Get fine-tuning parameters from config
@@ -131,12 +135,25 @@ class DETR_Lightning(TrainingDiagnostics, pl.LightningModule):
         self._log_memory_usage()
         self._log_timing_usage()
 
-    def generalized_box_iou(self, boxes1, boxes2):
+    def generalized_box_iou(
+            self, boxes1: torch.Tensor, boxes2: torch.Tensor
+        ) -> torch.Tensor:
         """
-        Generalized IoU loss.
-        boxes1, boxes2: [N, 4] in (x0, y0, x1, y1) normalized format
-        Returns: GIoU loss (1 - GIoU)
+        Generalized IoU loss calculation.
+
+        Parameters:
+        -----------
+        boxes1: torch.Tensor
+            [N, 4] in (x0, y0, x1, y1) normalized format
+        boxes2: torch.Tensor
+            [M, 4] in (x0, y0, x1, y1) normalized format
+
+        Returns:
+        --------
+        torch.Tensor
+            Scalar GIoU loss value (1 - GIoU).
         """
+
         # Swap coordinates if needed to ensure x0 <= x1, y0 <= y1
         boxes1 = torch.stack([
             torch.min(boxes1[:, 0], boxes1[:, 2]),
@@ -191,10 +208,28 @@ class DETR_Lightning(TrainingDiagnostics, pl.LightningModule):
         self,
         pred_logits: torch.Tensor,
         pred_boxes: torch.Tensor,
-        batch_targets,
+        batch_targets: list[list[dict]],
         images: torch.Tensor,
-    ):
-        """Compute DETR losses for one decoder output tensor pair."""
+    ) -> dict:
+        """
+        Compute DETR losses for one decoder output tensor pair.
+
+        Parameters:
+        -----------
+        pred_logits: torch.Tensor
+            [B, num_queries, num_classes] predicted class logits from the model.
+        pred_boxes: torch.Tensor
+            [B, num_queries, 4] predicted bounding boxes in [cx, cy, w, h] normalized format.
+        batch_targets: list[list[dict]]
+            A batch of targets, where each target is a list of annotation dicts for one image.
+        images: torch.Tensor
+            [B, C, H, W] input images.
+
+        Returns:
+        --------
+        dict
+            A dictionary containing the computed losses.
+        """
 
         matched_indices = hungarian_matching(
             pred_logits,
@@ -523,21 +558,3 @@ class DETR_Lightning(TrainingDiagnostics, pl.LightningModule):
         }
 
         return {'optimizer': optimizer, 'lr_scheduler': lr_scheduler_config}
-
-    def _prepare_targets(self, targets):
-        """Convert COCO-style targets list to batched tensors."""
-
-        # targets is a list of lists, where each inner list contains annotation dicts
-        batch_size = len(targets)
-        max_objects = max(len(ann_list) for ann_list in targets) if targets else 0
-               
-        # classification labels must be integer (long) for CrossEntropyLoss
-        labels = torch.full((batch_size, max_objects), fill_value=0, dtype=torch.long, device=self.device)
-        boxes = torch.zeros(batch_size, max_objects, 4, dtype=torch.float32, device=self.device)
-        
-        for i, ann_list in enumerate(targets):
-            for j, ann in enumerate(ann_list):
-                labels[i, j] = int(ann["category_id"])
-                boxes[i, j] = torch.tensor(ann["bbox"], dtype=torch.float32, device=self.device)
-
-        return labels, boxes
