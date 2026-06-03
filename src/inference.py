@@ -63,13 +63,14 @@ if __name__ == "__main__":
 
     print("\n    ==== START INFERENCE ====\n\n")
 
-    # 1. Init model.
+    # 1. Init model:
+    # Set the path to your trained checkpoint and the config file used for training.
 
     print("  Loading model checkpoint...")
     device = "cuda" if torch.cuda.is_available() else "cpu"
 
-    ckpt_path = "lightning_logs/version_9/checkpoints/last.ckpt"
-    config = load_config("lightning_logs/version_9/config.yaml")
+    ckpt_path = "lightning_logs/version_10/checkpoints/best_epoch=10-step=81323-val_loss=10.1230-train_loss=8.3082.ckpt"
+    config = load_config("lightning_logs/version_10/config.yaml")
 
     model = DETR_Lightning.load_from_checkpoint(ckpt_path, config=config, weights_only=False)
     model.eval()
@@ -78,9 +79,10 @@ if __name__ == "__main__":
     # 2. Get data.
 
     print("  Get data...")
-    idx = 5  # person + ski
-    # idx = 10  # person, boat, bird, handbag
+    # idx = 5  # person + ski
+    idx = 10  # person, boat, bird, handbag
     # idx = 13  # sandwich + bowl
+    # idx = 25  #dining table + knife + wine glass
 
     # Post-processing presets for visualization.
     # - clean: fewer boxes, higher precision
@@ -89,19 +91,20 @@ if __name__ == "__main__":
     postprocess_presets = {
         "clean": {
             "top_k": 100,
-            "score_threshold": 0.25,
+            "score_threshold": 0.75,
             "bg_prob_threshold": 0.50,
             "margin_threshold": 0.20,
             "max_detections": 12,
         },
         "debug": {
             "top_k": 100,
-            "score_threshold": 0.10,
+            "score_threshold": 0.25,
             "bg_prob_threshold": 0.65,
             "margin_threshold": 0.05,
             "max_detections": 25,
         },
     }
+
     if viz_mode not in postprocess_presets:
         raise ValueError(f"Unsupported viz_mode={viz_mode}. Use one of: {list(postprocess_presets)}")
 
@@ -194,7 +197,7 @@ if __name__ == "__main__":
 
     print("  Visualize predictions...")
 
-    # Convert to xyxy normalized coords (this function is now correct for center format)
+    # Convert to xyxy normalized coords.
     boxes_xyxy = box_cxcywh_to_xyxy(selected_boxes_norm)
 
     # Rescale to original image size using the resized tensor dimensions.
@@ -224,7 +227,8 @@ if __name__ == "__main__":
     gt_labels_str = []
     
     for ann in gt_anns:
-        # COCO format: [x, y, w, h] in original image coordinates
+        
+        # COCO format: [x, y, w, h] in original image coordinates.
         x, y, w, h = ann["bbox"]
         
         # Convert to xyxy format
