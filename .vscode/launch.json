@@ -20,6 +20,26 @@
             "args": ["--config", "${workspaceFolder}/configs/default.yaml", "--gpu", "0"],
             "console": "integratedTerminal",
             "justMyCode": false
+        },
+        {
+            "name": "COCO_eval",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${workspaceFolder}/src/coco_eval_val2017.py",
+            "args": [
+                // Res50 backbone with conditional DETR
+                // "--config", "${workspaceFolder}/lightning_logs/version_7/config.yaml",
+                // "--checkpoint", "${workspaceFolder}/lightning_logs/version_7/checkpoints/best_epoch=14-step=55455-val_loss=11.5621-train_loss=9.9293.ckpt",
+                // "--save-metrics", "${workspaceFolder}/outputs/version_7/cocoeval_val2017_metrics.json",
+                // "--save-predictions", "${workspaceFolder}/outputs/version_7/cocoeval_val2017_predictions.json"
+                // DINOv2 backbone with conditional DETR
+                "--config", "${workspaceFolder}/lightning_logs/version_10/config.yaml",
+                "--checkpoint", "${workspaceFolder}/lightning_logs/version_10/checkpoints/best_epoch=10-step=81323-val_loss=10.1230-train_loss=8.3082.ckpt",
+                "--save-metrics", "${workspaceFolder}/outputs/version_10/cocoeval_val2017_metrics.json",
+                "--save-predictions", "${workspaceFolder}/outputs/version_10/cocoeval_val2017_predictions.json"
+            ],
+            "console": "integratedTerminal",
+            "justMyCode": false
         }
     ]
 }

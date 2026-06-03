@@ -4,3 +4,4 @@ __pycache__/*
 
 # Ignore PyTorch Lightning logs
 lightning_logs/
+outputs/
