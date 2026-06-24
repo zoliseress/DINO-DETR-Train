@@ -36,6 +36,46 @@ from datamodule import load_config
 from lightning_module import DETR_Lightning
 
 
+class EpochTensorBoardLogger(TensorBoardLogger):
+    """TensorBoard logger that prefers the current epoch as x-axis step."""
+
+    @staticmethod
+    def _resolve_epoch_step(metrics: dict, fallback_step: int | None) -> int | None:
+        """
+        Resolve the current epoch step from metrics dict, falling back to provided step.
+        """
+        epoch_value = metrics.get("epoch")
+        if epoch_value is None:
+            return fallback_step
+
+        if isinstance(epoch_value, torch.Tensor):
+            if epoch_value.numel() != 1:
+                return fallback_step
+            epoch_value = epoch_value.detach().item()
+
+        try:
+            return int(epoch_value)
+        except (TypeError, ValueError):
+            return fallback_step
+
+    def log_metrics(self, metrics: dict, step: int | None = None) -> None:
+        """
+        Log metrics to TensorBoard, preferring the current epoch as step.
+        """
+        filtered_metrics = {
+            key: value
+            for key, value in metrics.items()
+            if not key.endswith("_step") and key not in {"step", "global_step", "epoch"}
+        }
+
+        if not filtered_metrics:
+            return
+
+        epoch_step = self._resolve_epoch_step(metrics=metrics, fallback_step=step)
+        # epoch_step = filtered_metrics.get("epoch")
+        super().log_metrics(filtered_metrics, step=epoch_step)
+
+
 def load_checkpoint_for_finetuning(
         checkpoint_path: str, config: DictConfig
     ) -> torch.nn.Module:
@@ -186,7 +226,8 @@ class CustomTrainer:
         )
 
         # Create TensorBoard logger.
-        tb_logger = TensorBoardLogger(
+        # tb_logger = TensorBoardLogger(          # original logger (step iteration-based)
+        tb_logger = EpochTensorBoardLogger(       # epoch-aware logger
             save_dir="",
             # name="DINO_DETR_TB_log",
             version=None  # Auto-increment version
@@ -203,8 +244,7 @@ class CustomTrainer:
             log_every_n_steps=self.log_every_n_steps,
             gradient_clip_val=self.gradient_clip_val,
             gradient_clip_algorithm="norm",
-            logger=tb_logger,  # Add logger here
-            # log_every_n_steps=300,  # Log every 10 training steps
+            logger=tb_logger,
             callbacks=callbacks,
             limit_train_batches=self.limit_train_batches,
         )
