@@ -266,7 +266,7 @@ def _build_val_subset(
     """
 
     start_idx = int(val_cfg.get("start_idx", 0))
-    num_images = int(val_cfg.get("num_images", 200))
+    num_images = int(val_cfg.get("num_images", 5000))
     max_len = len(dataset_val)
     start_idx = max(0, min(start_idx, max_len))
     end_idx = max(start_idx, min(start_idx + max(0, num_images), max_len))

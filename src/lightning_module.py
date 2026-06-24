@@ -57,23 +57,14 @@ class DETR_Lightning(TrainingDiagnostics, pl.LightningModule):
             "backbone_learning_rate", self.learning_rate * 0.1
         )
         self.weight_decay = config["train"].get("weight_decay", 1e-4)
-        self.debug_log_on_step = config["train"].get("debug_log_on_step", True)
-        self.debug_log_every_n_steps = int(config["train"].get("debug_log_every_n_steps", 25))
-        if self.debug_log_every_n_steps <= 0:
-            self.debug_log_every_n_steps = 1
 
-        # Scheduler defaults are validation-driven to avoid overfitting to train loss.
+        # Scheduler defaults are validation-driven.
         train_cfg = config.get("train", {})
         val_monitor_enabled = bool(config.get("validation_monitor", {}).get("enabled", True))
         default_monitor = "val_loss" if val_monitor_enabled else "train_loss"
         self.lr_scheduler_monitor = str(train_cfg.get("lr_scheduler_monitor", default_monitor))
-        if self.lr_scheduler_monitor.endswith("loss") or self.lr_scheduler_monitor == "val_loss":
-            default_mode = "min"
-        elif self.lr_scheduler_monitor.startswith("val_"):
-            default_mode = "max"
-        else:
-            default_mode = "min"
-        self.lr_scheduler_mode = str(train_cfg.get("lr_scheduler_mode", default_mode))
+
+        self.lr_scheduler_mode = str(train_cfg.get("lr_scheduler_mode", "min"))
         self.lr_scheduler_factor = float(train_cfg.get("lr_scheduler_factor", 0.1))
         self.lr_scheduler_patience = int(train_cfg.get("lr_scheduler_patience", 10))
         self.lr_scheduler_min_lr = float(train_cfg.get("lr_scheduler_min_lr", 1e-7))
@@ -90,12 +81,11 @@ class DETR_Lightning(TrainingDiagnostics, pl.LightningModule):
         self.profile_timing_print = bool(train_cfg.get("profile_timing_print", True))
         self._reset_timing_counters()
 
+        # Losses.
         self.criterion = torch.nn.CrossEntropyLoss()
-
-        # L1 loss for bounding box regression
         self.l1_loss = torch.nn.L1Loss(reduction='mean')
         
-        # Loss weights (DETR paper uses these ratios)
+        # Loss weights.
         self.loss_bbox_weight = config["model"]["weight_bbox"]
         self.loss_l1_weight = config["model"]["weight_L1"]
         self.loss_giou_weight = config["model"]["weight_giou"]
