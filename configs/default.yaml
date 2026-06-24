@@ -1,17 +1,24 @@
 
 data:
-  input_size: 518  # input image size: 518 for DINOv2, 480 for ResNet
-  train_data_dir: ""  # local path
-  val_data_dir: ""    # local path
-  train_ann_file: ""  # local path
-  val_ann_file: ""    # local path
-
+  # The size of the image fed into the model. For DINOv2 backbones, we can use 518 to
+  #leverage the pretrained positional embeddings. For ResNet backbones, we can use 480
+  # to match the original DETR paper and avoid interpolation issues. Different sizes
+  # can be used, but they may require adjusting the learning rate and batch size to fit
+  # in memory.
+  input_size: 518
+  # The train (mandatory) and validation (optional) data directories and annotation files.
+  train_data_dir: ""  # local path, define it
+  val_data_dir: ""    # local path, define it
+  train_ann_file: ""  # local path, optional
+  val_ann_file: ""    # local path, optional
+  # Dataloader settings. Adjust num_workers considering the CPU and memory capabilities.
+  # Setting it to 0 will use the main process for data loading.
   num_workers: 2
   pin_memory: false
   persistent_workers: false
   prefetch_factor: 2
 
-# Memory:
+# Memory usage rough estimates (using the default training configuration):
 #  - Batch size 32 with bf16-mixed precision and input_size 480:
 #    - 2.6 GB VRAM for a train batch when the backbone is freezed (ResNet50, original DETR)
 #    - 8.8 GB VRAM for a train batch when the backbone is unfrozen (ResNet50, original DETR)
@@ -23,42 +30,70 @@ data:
 #    - 13.8 GB VRAM for a train batch when the backbone is unfrozen (DINOv2, conditional DETR)
 
 train:
+  # Maximum number of training epochs.
   epochs: 70
-  limit_train_batches: 1.0  # Keep small for fast iteration, use 1.0/-1 for full training.
-  max_steps: -1  # Stop training after this many steps (-1 for no limit).
-
+  # Change it to a smaller value (e.g., 0.1) for quick testing and debugging,
+  # or set to 1.0 or -1 for full training.
+  limit_train_batches: 1.0
+  # Stop training after this many steps (-1 for no limit).
+  max_steps: -1
+  # Train batch size.
   batch_size: 16
+  # Use mixed precision training with bfloat16 (if supported by the hardware) for
+  # faster training and reduced memory usage.
   precision: "bf16-mixed"
+  ## The optimizer is AdamW. ##
+  # DETR learning rate.
   learning_rate: 0.00001
+  # Backbone learning rate (set to a smaller value than DETR learning rate).
   backbone_learning_rate: 0.000001
+  # Weight decay.
   weight_decay: 0.0001
+  # Gradient clipping value.
   gradient_clip_val: 0.1
 
+  # Learning rate scheduler settings.
+  # The scheduler uses this loss type. The default is "val_loss", but it can be used
+  # only, if validation_monitor is enabled, else it will default to "train_loss".
   lr_scheduler_monitor: "val_loss"
+  # Minimize the monitored loss. Using "max" requires to change the metric (e.g. mAP).
   lr_scheduler_mode: "min"
+  # The learning rate will be reduced by a factor of 0.1 if the validation loss
+  # does not improve.
   lr_scheduler_factor: 0.1
+  # The learning rate will be reduced after this many epochs without improvement.
   lr_scheduler_patience: 10
+  # Minimum learning rate after reductions.
   lr_scheduler_min_lr: 0.0000001
 
-  debug_log_on_step: true
-  debug_log_every_n_steps: 25
-
+  # Profiling settings. Enable to print detailed timing and memory usage information
+  # during training.
   profile_diagnostics_enabled: true
   profile_memory_enabled: true
   profile_timing_enabled: true
-  profile_timing_cuda_sync: false
+  profile_timing_cuda_sync: false  # TODO check.
   profile_timing_print: true
 
-  # Fine-tuning configuration (set checkpoint_path to enable fine-tuning)
+  # Fine-tuning configuration (set checkpoint_path to enable fine-tuning).
   checkpoint_path: null
   # checkpoint_path: "lightning_logs/version_0/checkpoints/last.ckpt"  # example
-  freeze_backbone: false
-  unfreeze_backbone_at_epoch: -1
+  # Freeze the backbone during training. If true, the backbone will not be updated
+  # and will use the pretrained weights. If false, the backbone will be updated
+  # during training.
+  freeze_backbone: true
+  # Unfreeze the backbone after this many epochs. If -1, the backbone will not be
+  # unfrozen during training. This setting is ignored if freeze_backbone is false.
+  unfreeze_backbone_at_epoch: 2
 
 validation_monitor:
+  # Enable validation monitoring to use validation metrics for learning rate
+  # scheduling and checkpointing. If false, training metrics will be used instead.
   enabled: true
-  num_images: 1000  # Subset of the full validation set (full set has 5000 images).
-  start_idx: 0  # Starting index for the validation subset.
+  # Using a subset of the full validation set (full set has 5000 images).
+  num_images: 50000
+  # Starting index for the validation subset.
+  start_idx: 0
+  # Validation batch size.
   batch_size: 16
 
 model:
@@ -67,14 +102,20 @@ model:
   # - ResNet: resnet50, resnet101, ...
   # Preprocessing switches automatically based on this value.
   backbone: "vit_base_patch14_dinov2.lvd142m"
-  use_conditional_decoder: true  # Set true to use Conditional DETR-style decoder layers.
-  num_classes: 91  #  While the COCO dataset API defines 91 class labels (due to placeholders and non-used categories), only 80 of them are actually used in the standard dataset annotations.
+  # If True, the Conditional DETR-style decoder layers are used.
+  use_conditional_decoder: true
+  # While the COCO dataset API defines 91 class labels (due to placeholders and non-used
+  # categories), only 80 of them are actually used in the standard dataset annotations.
+  num_classes: 91
+  # The dimension of the hidden layers in the transformer.
   hidden_dim: 256
+  # The number of object queries in the transformer decoder.
   num_queries: 100
-  weight_L1: 5.0          # 5 in the original paper
-  weight_giou: 2.0        # 2 in the original paper
-  weight_bbox: 1.0        # 1 in the original paper
-  weight_no_object: 0.1  # 0.1 in the original paper?
+  # Loss weights as in the original paper.
+  weight_L1: 5.0
+  weight_giou: 2.0
+  weight_bbox: 1.0
+  weight_no_object: 0.1
 
 logging:
   log_dir: "logs/"        # not used?
