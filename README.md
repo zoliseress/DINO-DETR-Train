@@ -22,6 +22,7 @@ dino-detr-pl
 |   ├── inference.py              # Running inference and visualize the predictions
 │   ├── lightning_module.py       # PyTorch Lightning module for training and validation
 │   ├── matcher.py                # The Hungarian algorithm.
+│   ├── plot_losses.py            # Merge train and val TB losses into one plot
 │   ├── plot.py                   # Visualization functions for model predictions (for inference)
 │   ├── train.py                  # Training loop and logic
 |   └── training_diagnostics.py   # Timing and memory diagnostics
@@ -64,11 +65,47 @@ python src/inference.py
 ```
 
 ## Configuration
-The configuration file `configs/default.yaml` contains hyperparameters and paths that can be adjusted for training and evaluation.
+The configuration file [configs/default.yaml](./configs/default.yaml) contains hyperparameters and paths that can be adjusted for training and evaluation.
+
+## Training Results
+
+### Loss Curves
+Below is a visualization of the combined training and validation loss curves for an example model training (Conditional DETR with DINOv2 backbone, and used only 1000 images from the validation set). The x-axis represents epochs, and the y-axis shows the loss values. This plot demonstrates the convergence behavior and the relationship between training and validation loss throughout the training process.
+
+<img src="outputs/plots/version_10_merged_loss_plot.png" alt="Training and Validation Loss" width="800"/>
+<br>
+
+### Inference
+The model trained (whose training curves are shown above) with COCO dataset presents the following predictions capabilities on a sample image.
+
+<img src="outputs/plots/inference.png" alt="Training and Validation Loss" width="800"/>
+<br>
+
+## Evaluation results
+
+The COCO API (see [pycocotools](https://pypi.org/project/pycocotools/)) is a good choice if someone wants to evaluate a COCO-formatted dataset. I used the COCOEval class to do that on the full validation set (5000 images).
+
+| Metric | IoU | Value |
+| --- | --- | --- |
+| AP | 0.50:0.95 | 0.3048443963019512 |
+| AP50 | 0.50 | 0.5128832624655534 |
+| AP75 | 0.75 | 0.30959857527967144 |
+| AP_small | 0.50:0.95 | 0.08387300205840989 |
+| AP_medium | 0.50:0.95 | 0.31833833040515724 |
+| AP_large | 0.50:0.95 | 0.530178638314992 |
+| AR_max1 | 0.50:0.95 | 0.28194748101528866 |
+| AR_max10 | 0.50:0.95 | 0.426293822223948 |
+| AR_max100 | 0.50:0.95 | 0.453124911354454 |
+| AR_small | 0.50:0.95 | 0.15838892100034818 |
+| AR_medium | 0.50:0.95 | 0.5049741968619375 |
+| AR_large | 0.50:0.95 | 0.7362857560296356 |
+
 
 ## How DETR Detects Objects
 
-Key features of the original method.
+After introducing the repository content and the training/evaluation basics, let's take a few words about the background of DETR to see why was it exceptional at the time when it was presented.
+
+The key features of the original method.
 
 - **Direct Set Prediction:** Instead of using the conventional two-stage process involving region proposal networks (RPNs) and subsequent object classification, DETR frames object detection as a direct set prediction problem. It considers all objects in the image as a set and aims to predict their classes and bounding boxes in one pass. Two ingredients are essential for direct set predictions in detection:
     - A **set prediction loss** that forces unique matching between predicted and ground truth boxes. It is done using the Hungarian algorithm. 
