@@ -71,6 +71,8 @@ if __name__ == "__main__":
 
     ckpt_path = "lightning_logs/version_10/checkpoints/best_epoch=10-step=81323-val_loss=10.1230-train_loss=8.3082.ckpt"
     config = load_config("lightning_logs/version_10/config.yaml")
+    # ckpt_path = "lightning_logs/version_11/checkpoints/best_epoch=56-step=421401-val_loss=10.9630-train_loss=9.0813.ckpt"
+    # config = load_config("lightning_logs/version_11/config.yaml")
 
     model = DETR_Lightning.load_from_checkpoint(ckpt_path, config=config, weights_only=False)
     model.eval()
@@ -227,7 +229,7 @@ if __name__ == "__main__":
     gt_labels_str = []
     
     for ann in gt_anns:
-        
+
         # COCO format: [x, y, w, h] in original image coordinates.
         x, y, w, h = ann["bbox"]
         
