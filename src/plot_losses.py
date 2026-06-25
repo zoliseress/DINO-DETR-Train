@@ -1,8 +1,9 @@
 """
-Script to extract loss values from TensorFlow events file and create a combined plot.
-The combined plot will show:
-    - both training and validation losses for easy comparison
-    - x-axis normalized to epoch scale (TB logs uses iteration steps)
+Utilities to extract losses from TensorBoard event files and create plots.
+
+Includes:
+    - single-run train vs val loss plot
+    - multi-run validation loss comparison plot
 """
 
 from pathlib import Path
@@ -56,6 +57,35 @@ def extract_losses_from_events(event_file_path, max_epoch=70):
     }
 
 
+def extract_single_val_loss(event_file_path):
+    """Extract only val_loss scalar pairs (step, value) from one events file."""
+    ea = event_accumulator.EventAccumulator(str(event_file_path))
+    ea.Reload()
+
+    scalar_tags = ea.Tags().get('scalars', [])
+    if 'val_loss' not in scalar_tags:
+        return []
+
+    return [(event.step, event.value) for event in ea.Scalars('val_loss')]
+
+
+def steps_to_epochs(step_value_pairs, max_epoch):
+    """Normalize TensorBoard steps to an epoch axis in [0, max_epoch]."""
+    if not step_value_pairs:
+        return np.array([]), np.array([])
+
+    steps, values = zip(*step_value_pairs)
+    steps = np.array(steps, dtype=float)
+    values = np.array(values, dtype=float)
+
+    max_step = steps.max()
+    if max_step <= 0:
+        return steps, values
+
+    epochs = steps * (max_epoch / max_step)
+    return epochs, values
+
+
 def create_combined_loss_plot(data, output_path):
     """
     Create a combined plot of train and validation losses.
@@ -72,16 +102,12 @@ def create_combined_loss_plot(data, output_path):
     
     # Plot train losses.
     if train_losses:
-        steps, values = zip(*train_losses)
-        # Normalize steps to epoch scale.
-        epochs = np.array(steps) / (max(steps) / max_epoch) if max(steps) > 0 else np.array(steps)
+        epochs, values = steps_to_epochs(train_losses, max_epoch)
         ax.plot(epochs, values, label='Train Loss', linewidth=2, marker='o', markersize=3, alpha=0.8)
     
     # Plot validation losses.
     if val_losses:
-        steps, values = zip(*val_losses)
-        # Normalize steps to epoch scale.
-        epochs = np.array(steps) / (max(steps) / max_epoch) if max(steps) > 0 else np.array(steps)
+        epochs, values = steps_to_epochs(val_losses, max_epoch)
         ax.plot(epochs, values, label='Validation Loss', linewidth=2, marker='s', markersize=3, alpha=0.8)
     
     ax.set_xlabel('Epoch', fontsize=12, fontweight='bold')
@@ -99,9 +125,44 @@ def create_combined_loss_plot(data, output_path):
     plt.close()
 
 
+def create_val_loss_comparison_plot(run_to_event_file, run_to_label, output_path, max_epoch=70):
+    """
+    Create one plot with validation loss curves from multiple runs.
+
+    Args:
+        run_to_event_file: mapping of run name to event file path
+        run_to_label: mapping of run name to legend label
+        output_path: path to save figure
+        max_epoch: epoch max for x-axis
+    """
+    _, ax = plt.subplots(figsize=(12, 6))
+
+    for run_name, event_file in run_to_event_file.items():
+        val_loss_pairs = extract_single_val_loss(event_file)
+        epochs, values = steps_to_epochs(val_loss_pairs, max_epoch)
+
+        if len(epochs) == 0:
+            print(f"Warning: no val_loss data found for {run_name}")
+            continue
+
+        ax.plot(epochs, values, linewidth=2.2, label=run_to_label.get(run_name, run_name), alpha=0.9)
+
+    ax.set_xlabel('Epoch', fontsize=12, fontweight='bold')
+    ax.set_ylabel('Validation Loss', fontsize=12, fontweight='bold')
+    ax.set_title('Validation Loss Comparison Across Models', fontsize=14, fontweight='bold')
+    ax.set_xlim(0, max_epoch)
+    ax.grid(True, alpha=0.3)
+    ax.legend(fontsize=10)
+
+    plt.tight_layout()
+    plt.savefig(output_path, dpi=300, bbox_inches='tight')
+    print(f"Plot saved to {output_path}")
+    plt.close()
+
+
 if __name__ == '__main__':
 
-    # Path to events file.
+    # Path to events file for single-run train/val plot.
     events_dir = Path('lightning_logs/version_10_merged')
     event_files = list(events_dir.glob('events.out.tfevents*'))
     
@@ -119,8 +180,22 @@ if __name__ == '__main__':
     output_dir = Path('outputs/plots')
     output_dir.mkdir(parents=True, exist_ok=True)
     
-    # Create plot.
+    # Create single-run train/val plot.
     output_path = output_dir / 'version_10_merged_loss_plot.png'
     create_combined_loss_plot(data, output_path)
+
+    # Create multi-run validation-loss comparison plot.
+    comparison_runs = {
+        'version_4_merged': Path('lightning_logs/version_4_merged/events.out.tfevents.1779913677.FJ-ZSERESS-N.57832.0'),
+        'version_7_merged': Path('lightning_logs/version_7_merged/events.out.tfevents.1779913261.FJ-ZSERESS-N.63324.0'),
+        'version_10_merged': Path('lightning_logs/version_10_merged/events.out.tfevents.1780380751.FJ-ZSERESS-N.17152.0'),
+    }
+    comparison_labels = {
+        'version_4_merged': 'Original DETR + ResNet-50',
+        'version_7_merged': 'Conditional DETR + ResNet-50',
+        'version_10_merged': 'Conditional DETR + DINOv2',
+    }
+    comparison_output = output_dir / 'val_loss_model_comparison.png'
+    create_val_loss_comparison_plot(comparison_runs, comparison_labels, comparison_output, max_epoch=70)
     
     print("Done!")

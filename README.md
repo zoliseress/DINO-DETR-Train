@@ -81,25 +81,40 @@ The model trained (whose training curves are shown above) with COCO dataset pres
 <img src="outputs/plots/inference.png" alt="Training and Validation Loss" width="800"/>
 <br>
 
+### Loss Comparison
+The following figure compares validation loss across three model setups:
+- Original DETR with ResNet-50 (OD-R50)
+- Conditional DETR with ResNet-50 (CD-R50)
+- Conditional DETR with DINOv2 (CD-DINO)
+
+<img src="outputs/plots/val_loss_model_comparison.png" alt="Validation Loss Comparison Across Models" width="800"/>
+<br>
+
+**Note:** Losses of the blue curve between epoch 0 and 32 are not represented, because the training of that model was a sequence of finetunings, and at epoch 32 I changed the loss formula, so those early values are not compatible with this graph.
+
+The training time of the models are not represented here, but on average one epoch for OD-R50 took 44 min, for CD-R50 took 43 min and for CD-DINO took 81 min. Unfortunately the faster convergence attribute of CD-Res50 over OD-Res50 is not proven since the early losss values are missing, and the training time for both models are quite similar. What is clear that CD-DINO is two times slower because of the huge DINOv2 backbone, but the shape of its loss curve is convincing.
+
 ## Evaluation results
 
 The COCO API (see [pycocotools](https://pypi.org/project/pycocotools/)) is a good choice if someone wants to evaluate a COCO-formatted dataset. I used the COCOEval class to do that on the full validation set (5000 images).
 
-| Metric | IoU | Value |
-| --- | --- | --- |
-| AP | 0.50:0.95 | 0.3048443963019512 |
-| AP50 | 0.50 | 0.5128832624655534 |
-| AP75 | 0.75 | 0.30959857527967144 |
-| AP_small | 0.50:0.95 | 0.08387300205840989 |
-| AP_medium | 0.50:0.95 | 0.31833833040515724 |
-| AP_large | 0.50:0.95 | 0.530178638314992 |
-| AR_max1 | 0.50:0.95 | 0.28194748101528866 |
-| AR_max10 | 0.50:0.95 | 0.426293822223948 |
-| AR_max100 | 0.50:0.95 | 0.453124911354454 |
-| AR_small | 0.50:0.95 | 0.15838892100034818 |
-| AR_medium | 0.50:0.95 | 0.5049741968619375 |
-| AR_large | 0.50:0.95 | 0.7362857560296356 |
+| Metric | IoU | OD-R50 | CD-R50 | CD-DINO |
+| --- | --- | --- | --- | --- |
+| AP | 0.50:0.95 | 0.229 | 0.237 | 0.305 |
+| AP50 | 0.50 | 0.413 | 0.425 | 0.513 |
+| AP75 | 0.75 | 0.222 | 0.231 | 0.310 |
+| AP_small | 0.50:0.95 | 0.033 | 0.042 | 0.084 |
+| AP_medium | 0.50:0.95 | 0.203 | 0.214 | 0.318 |
+| AP_large | 0.50:0.95 | 0.453 | 0.463 | 0.530 |
+| AR_max1 | 0.50:0.95 | 0.218 | 0.223 | 0.282 |
+| AR_max10 | 0.50:0.95 | 0.336 | 0.347 | 0.426 |
+| AR_max100 | 0.50:0.95 | 0.372 | 0.386 | 0.453 |
+| AR_small | 0.50:0.95 | 0.087 | 0.100 | 0.158 |
+| AR_medium | 0.50:0.95 | 0.370 | 0.398 | 0.505 |
+| AR_large | 0.50:0.95 | 0.684 | 0.696 | 0.736 |
 
+
+For all metrics the bigger value the better. The superiority of Conditional DETR with DINOv2 backbone is clear.
 
 ## How DETR Detects Objects
 
