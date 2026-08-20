@@ -70,51 +70,50 @@ The configuration file [configs/default.yaml](./configs/default.yaml) contains h
 ## Training Results
 
 ### Loss Curves
-Below is a visualization of the combined training and validation loss curves for an example model training (Conditional DETR with DINOv2 backbone, and used only 1000 images from the validation set). The x-axis represents epochs, and the y-axis shows the loss values. This plot demonstrates the convergence behavior and the relationship between training and validation loss throughout the training process.
+Below is a visualization of the combined training and validation loss curves for an example model training (Conditional DETR with DINOv2 backbone, 5000 validation images). The x-axis represents epochs, and the y-axis shows the loss values. This plot demonstrates the convergence behavior and the relationship between training and validation loss throughout the training process. It is clear that the best validation loss is in the 41th epoch, after it no real iprovement is noticed.
 
-<img src="outputs/plots/version_10_merged_loss_plot.png" alt="Training and Validation Loss" width="800"/>
+<img src="outputs/plots/version_15_dino_cdetr_loss_plot.png" alt="Training and Validation Loss" width="800"/>
 <br>
 
 ### Inference
-The model trained (whose training curves are shown above) with COCO dataset presents the following predictions capabilities on a sample image.
+The model (whose training curves are shown above) presents the following predictions capabilities on a sample image.
 
-<img src="outputs/plots/inference.png" alt="Training and Validation Loss" width="800"/>
+<img src="outputs/plots/inference_dino_cdetr.png" alt="Training and Validation Loss" width="800"/>
 <br>
 
 ### Loss Comparison
 The following figure compares validation loss across three model setups:
 - Original DETR with ResNet-50 (OD-R50)
 - Conditional DETR with ResNet-50 (CD-R50)
+- Original DETR with DINOv2 (OD-DINO)
 - Conditional DETR with DINOv2 (CD-DINO)
 
 <img src="outputs/plots/val_loss_model_comparison.png" alt="Validation Loss Comparison Across Models" width="800"/>
 <br>
 
-**Note:** Losses of the blue curve between epoch 0 and 32 are not represented, because the training of that model was a sequence of finetunings, and at epoch 32 I changed the loss formula, so those early values are not compatible with this graph.
-
-The training time of the models are not represented here, but on average one epoch for OD-R50 took 44 min, for CD-R50 took 43 min and for CD-DINO took 81 min. Unfortunately the faster convergence attribute of CD-Res50 over OD-Res50 is not proven since the early losss values are missing, and the training time for both models are quite similar. What is clear that CD-DINO is two times slower because of the huge DINOv2 backbone, but the shape of its loss curve is convincing.
+The training time of the models are not represented here, but on average one epoch for OD-R50 took 49 min, for CD-R50 took 51 min, for OD-DINO took 1h 40 minm and for CD-DINO took 2h 12 min. The faster convergence attribute of CD-Res50 over OD-Res50 is clear, and the significance of the huge DinoV2 backbone over ResNet50 is also obvious. The shape of OD-R50 and CD-R50 curves are convincing, but they need musch more apoch to reach the performance of the other two models. This is exactly what was reported in the original DETR paper. The shape of the OD-DINO and CD-DINO curves shows the faster convergence, but the performance stucks in both cases despite the decrease of the learning rate.
 
 ## Evaluation results
 
 The COCO API (see [pycocotools](https://pypi.org/project/pycocotools/)) is a good choice if someone wants to evaluate a COCO-formatted dataset. I used the COCOEval class to do that on the full validation set (5000 images).
 
-| Metric | IoU | OD-R50 | CD-R50 | CD-DINO |
-| --- | --- | --- | --- | --- |
-| AP | 0.50:0.95 | 0.229 | 0.237 | 0.305 |
-| AP50 | 0.50 | 0.413 | 0.425 | 0.513 |
-| AP75 | 0.75 | 0.222 | 0.231 | 0.310 |
-| AP_small | 0.50:0.95 | 0.033 | 0.042 | 0.084 |
-| AP_medium | 0.50:0.95 | 0.203 | 0.214 | 0.318 |
-| AP_large | 0.50:0.95 | 0.453 | 0.463 | 0.530 |
-| AR_max1 | 0.50:0.95 | 0.218 | 0.223 | 0.282 |
-| AR_max10 | 0.50:0.95 | 0.336 | 0.347 | 0.426 |
-| AR_max100 | 0.50:0.95 | 0.372 | 0.386 | 0.453 |
-| AR_small | 0.50:0.95 | 0.087 | 0.100 | 0.158 |
-| AR_medium | 0.50:0.95 | 0.370 | 0.398 | 0.505 |
-| AR_large | 0.50:0.95 | 0.684 | 0.696 | 0.736 |
+| Metric | IoU | ResNet50 + DETR | ResNet50 + CDETR | DinoV2 + DETR | DinoV2 + CDETR |
+| --- | --- | --- | --- | --- | --- |
+| AP | 0.50:0.95 | 0.045 | 0.132 | 0.281 | <span style="color:turquoise; font-weight:600;">0.317</span> |
+| AP50 | 0.50 | 0.108 | 0.267 | 0.470 | <span style="color:turquoise; font-weight:600;">0.525</span> |
+| AP75 | 0.75 | 0.033 | 0.116 | 0.287 | <span style="color:turquoise; font-weight:600;">0.327</span> |
+| AP_small | 0.50:0.95 | 0.009 | 0.019 | 0.070 | <span style="color:turquoise; font-weight:600;">0.092</span> |
+| AP_medium | 0.50:0.95 | 0.041 | 0.112 | 0.280 | <span style="color:turquoise; font-weight:600;">0.340</span> |
+| AP_large | 0.50:0.95 | 0.086 | 0.260 | 0.515 | <span style="color:turquoise; font-weight:600;">0.543</span> |
+| AR_max1 | 0.50:0.95 | 0.119 | 0.168 | 0.270 | <span style="color:turquoise; font-weight:600;">0.290</span> |
+| AR_max10 | 0.50:0.95 | 0.195 | 0.271 | 0.395 | <span style="color:turquoise; font-weight:600;">0.436</span> |
+| AR_max100 | 0.50:0.95 | 0.226 | 0.295 | 0.418 | <span style="color:turquoise; font-weight:600;">0.458</span> |
+| AR_small | 0.50:0.95 | 0.025 | 0.047 | 0.132 | <span style="color:turquoise; font-weight:600;">0.163</span> |
+| AR_medium | 0.50:0.95 | 0.194 | 0.287 | 0.459 | <span style="color:turquoise; font-weight:600;">0.516</span> |
+| AR_large | 0.50:0.95 | 0.453 | 0.577 | 0.711 | <span style="color:turquoise; font-weight:600;">0.737</span> |
 
 
-For all metrics the bigger value the better. The superiority of Conditional DETR with DINOv2 backbone is clear.
+For all metrics the bigger value the better. In this 4-model comparison, DinoV2 + CDETR gives the strongest overall AP/AR results, which supports the initial assumption derived from the validation loss curves.
 
 ## How DETR Detects Objects
 

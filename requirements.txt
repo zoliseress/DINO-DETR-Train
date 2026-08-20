@@ -1,6 +1,8 @@
-torch==2.9.1+cu130
+# torch==2.8+cu129  # linux
+torch==2.9.1+cu130  # windows
 torchmetrics==1.9.0
-torchvision==0.25.0+cu130
+# torchvision==0.23.0+cu119  # linux
+torchvision==0.25.0+cu130    # windows
 lightning==2.6.1
 pycocotools==2.0.11
 omegaconf==2.3.0

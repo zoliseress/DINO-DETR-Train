@@ -69,10 +69,18 @@ if __name__ == "__main__":
     print("  Loading model checkpoint...")
     device = "cuda" if torch.cuda.is_available() else "cpu"
 
-    ckpt_path = "lightning_logs/version_10/checkpoints/best_epoch=10-step=81323-val_loss=10.1230-train_loss=8.3082.ckpt"
-    config = load_config("lightning_logs/version_10/config.yaml")
-    # ckpt_path = "lightning_logs/version_11/checkpoints/best_epoch=56-step=421401-val_loss=10.9630-train_loss=9.0813.ckpt"
-    # config = load_config("lightning_logs/version_11/config.yaml")
+    # ResNet50 + DETR
+    # ckpt_path = "lightning_logs/version_14_resnet50_detr/checkpoints/best_epoch=66-step=495331-val_loss=16.0936-train_loss=16.5434.ckpt"
+    # config = load_config("lightning_logs/version_14_resnet50_detr/config.yaml")
+    # ResNet50 + CDETR
+    # ckpt_path = "lightning_logs/version_17_resnet50_detr/checkpoints/"
+    # config = load_config("lightning_logs/version_17_resnet50_cdetr/config.yaml")
+    # DinoV2 + DETR
+    # ckpt_path = "lightning_logs/version_16_dino_detr/checkpoints/best_epoch=59-step=887160-val_loss=11.2052-train_loss=9.2438.ckpt"
+    # config = load_config("lightning_logs/version_16_dino_detr/config.yaml")
+    # DinoV2 + CDETR
+    ckpt_path = "lightning_logs/version_15_dino_cdetr/checkpoints/best_epoch=40-step=606226-val_loss=10.3646-train_loss=7.0312.ckpt"
+    config = load_config("lightning_logs/version_15_dino_cdetr/config.yaml")
 
     model = DETR_Lightning.load_from_checkpoint(ckpt_path, config=config, weights_only=False)
     model.eval()

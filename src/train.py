@@ -301,16 +301,24 @@ if __name__ == "__main__":
 
     # 2. Load configuration and construct the model.
     config = load_config(args.config)
+
+    cdetr = config["model"].get("use_conditional_decoder", True)
+    detr_variant = "Conditional DETR" if cdetr else "Standard DETR"
+    print(f"\n  Configuration:\n" +
+          f"    - backbone: {config['model']['backbone']}\n" +
+          f"    - DETR variant: {detr_variant}\n"
+          f"    - train batch size: {config['train']['batch_size']}\n"
+    )
     
     checkpoint_path = config["train"].get("checkpoint_path", None)
     if checkpoint_path:
-        print(f"\n  Fine-tuning from checkpoint:\n    {checkpoint_path}")
+        print(f"  Fine-tuning from checkpoint:\n    {checkpoint_path}")
         model = load_checkpoint_for_finetuning(
             checkpoint_path=checkpoint_path,
             config=config
         )
     else:
-        print("\n  Training from scratch.")
+        print("  Training from scratch.")
         model = DETR_Lightning(config=config)
 
     # 3. Get train/validation dataloaders.

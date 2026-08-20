@@ -38,10 +38,28 @@
                 // "--save-metrics", "${workspaceFolder}/outputs/version_10/cocoeval_val2017_metrics.json",
                 // "--save-predictions", "${workspaceFolder}/outputs/version_10/cocoeval_val2017_predictions.json"
                 // DINOv2 backbone with conditional DETR (5000 val images)
-                "--config", "${workspaceFolder}/lightning_logs/version_11/config.yaml",
-                "--checkpoint", "${workspaceFolder}/lightning_logs/version_11/checkpoints/best_epoch=56-step=421401-val_loss=10.9630-train_loss=9.0813.ckpt",
-                "--save-metrics", "${workspaceFolder}/outputs/version_11/cocoeval_val2017_metrics.json",
-                "--save-predictions", "${workspaceFolder}/outputs/version_11/cocoeval_val2017_predictions.json"
+                // "--config", "${workspaceFolder}/lightning_logs/version_11/config.yaml",
+                // "--checkpoint", "${workspaceFolder}/lightning_logs/version_11/checkpoints/best_epoch=56-step=421401-val_loss=10.9630-train_loss=9.0813.ckpt",
+                // "--save-metrics", "${workspaceFolder}/outputs/version_11/cocoeval_val2017_metrics.json",
+                // "--save-predictions", "${workspaceFolder}/outputs/version_11/cocoeval_val2017_predictions.json"
+                // == NEW TRAININGS ==
+                // ResNet50 backbone with Original DETR
+                "--config", "${workspaceFolder}/lightning_logs/version_14_resnet50_detr/config.yaml",
+                "--checkpoint", "${workspaceFolder}/lightning_logs/version_14_resnet50_detr/checkpoints/best_epoch=66-step=495331-val_loss=16.0936-train_loss=16.5434.ckpt",
+                "--save-metrics", "${workspaceFolder}/outputs/version_14_resnet50_detr/cocoeval_val2017_metrics.json",
+                "--save-predictions", "${workspaceFolder}/outputs/version_14_resnet50_detr/cocoeval_val2017_predictions.json"
+                // ResNet50 backbone with Original DETR
+                // TODO
+                // DINOv2 backbone with Original DETR
+                // "--config", "${workspaceFolder}/lightning_logs/version_16_dino_detr/config.yaml",
+                // "--checkpoint", "${workspaceFolder}/lightning_logs/version_16_dino_detr/checkpoints/best_epoch=59-step=887160-val_loss=11.2052-train_loss=9.2438.ckpt",
+                // "--save-metrics", "${workspaceFolder}/outputs/version_16_dino_detr/cocoeval_val2017_metrics.json",
+                // "--save-predictions", "${workspaceFolder}/outputs/version_16_dino_detr/cocoeval_val2017_predictions.json"
+                // DINOv2 backbone with Conditional DETR
+                // "--config", "${workspaceFolder}/lightning_logs/version_15_dino_cdetr/config.yaml",
+                // "--checkpoint", "${workspaceFolder}/lightning_logs/version_15_dino_cdetr/checkpoints/best_epoch=40-step=606226-val_loss=10.3646-train_loss=7.0312.ckpt",
+                // "--save-metrics", "${workspaceFolder}/outputs/version_15_dino_cdetr/cocoeval_val2017_metrics.json",
+                // "--save-predictions", "${workspaceFolder}/outputs/version_15_dino_cdetr/cocoeval_val2017_predictions.json"
             ],
             "console": "integratedTerminal",
             "justMyCode": false

@@ -33,21 +33,17 @@ def extract_losses_from_events(event_file_path, max_epoch=70):
     train_losses = []
     val_losses = []
     
-    # Extract train loss.
-    train_loss_tags = [tag for tag in scalar_tags if 'train' in tag.lower() and 'loss' in tag.lower()]
-    print(f"Train loss tags: {train_loss_tags}")
+    # Use the aggregate tags rather than auxiliary loss components.
+    print(f"Train loss available: {'train_loss' in scalar_tags}")
+    print(f"Validation loss available: {'val_loss' in scalar_tags}")
     
-    # Extract validation loss.
-    val_loss_tags = [tag for tag in scalar_tags if 'val' in tag.lower() and 'loss' in tag.lower()]
-    print(f"Validation loss tags: {val_loss_tags}")
-    
-    # Get the actual loss values.
-    if train_loss_tags:
-        events = ea.Scalars(train_loss_tags[0])
+    # Get the actual aggregate loss values.
+    if 'train_loss' in scalar_tags:
+        events = ea.Scalars('train_loss')
         train_losses = [(event.step, event.value) for event in events]
     
-    if val_loss_tags:
-        events = ea.Scalars(val_loss_tags[0])
+    if 'val_loss' in scalar_tags:
+        events = ea.Scalars('val_loss')
         val_losses = [(event.step, event.value) for event in events]
     
     return {
