@@ -99,18 +99,18 @@ The COCO API (see [pycocotools](https://pypi.org/project/pycocotools/)) is a goo
 
 | Metric | IoU | ResNet50 + DETR | ResNet50 + CDETR | DinoV2 + DETR | DinoV2 + CDETR |
 | --- | --- | --- | --- | --- | --- |
-| AP | 0.50:0.95 | 0.045 | 0.132 | 0.281 | <span style="color:turquoise; font-weight:600;">0.317</span> |
-| AP50 | 0.50 | 0.108 | 0.267 | 0.470 | <span style="color:turquoise; font-weight:600;">0.525</span> |
-| AP75 | 0.75 | 0.033 | 0.116 | 0.287 | <span style="color:turquoise; font-weight:600;">0.327</span> |
-| AP_small | 0.50:0.95 | 0.009 | 0.019 | 0.070 | <span style="color:turquoise; font-weight:600;">0.092</span> |
-| AP_medium | 0.50:0.95 | 0.041 | 0.112 | 0.280 | <span style="color:turquoise; font-weight:600;">0.340</span> |
-| AP_large | 0.50:0.95 | 0.086 | 0.260 | 0.515 | <span style="color:turquoise; font-weight:600;">0.543</span> |
-| AR_max1 | 0.50:0.95 | 0.119 | 0.168 | 0.270 | <span style="color:turquoise; font-weight:600;">0.290</span> |
-| AR_max10 | 0.50:0.95 | 0.195 | 0.271 | 0.395 | <span style="color:turquoise; font-weight:600;">0.436</span> |
-| AR_max100 | 0.50:0.95 | 0.226 | 0.295 | 0.418 | <span style="color:turquoise; font-weight:600;">0.458</span> |
-| AR_small | 0.50:0.95 | 0.025 | 0.047 | 0.132 | <span style="color:turquoise; font-weight:600;">0.163</span> |
-| AR_medium | 0.50:0.95 | 0.194 | 0.287 | 0.459 | <span style="color:turquoise; font-weight:600;">0.516</span> |
-| AR_large | 0.50:0.95 | 0.453 | 0.577 | 0.711 | <span style="color:turquoise; font-weight:600;">0.737</span> |
+| AP | 0.50:0.95 | 0.045 | 0.132 | 0.281 | **0.317** 🥇 |
+| AP50 | 0.50 | 0.108 | 0.267 | 0.470 | **0.525** 🥇 |
+| AP75 | 0.75 | 0.033 | 0.116 | 0.287 | **0.327** 🥇 |
+| AP_small | 0.50:0.95 | 0.009 | 0.019 | 0.070 | **0.092** 🥇 |
+| AP_medium | 0.50:0.95 | 0.041 | 0.112 | 0.280 | **0.340** 🥇 |
+| AP_large | 0.50:0.95 | 0.086 | 0.260 | 0.515 | **0.543** 🥇 |
+| AR_max1 | 0.50:0.95 | 0.119 | 0.168 | 0.270 | **0.290** 🥇 |
+| AR_max10 | 0.50:0.95 | 0.195 | 0.271 | 0.395 | **0.436** 🥇 |
+| AR_max100 | 0.50:0.95 | 0.226 | 0.295 | 0.418 | **0.458** 🥇 |
+| AR_small | 0.50:0.95 | 0.025 | 0.047 | 0.132 | **0.163** 🥇 |
+| AR_medium | 0.50:0.95 | 0.194 | 0.287 | 0.459 | **0.516** 🥇 |
+| AR_large | 0.50:0.95 | 0.453 | 0.577 | 0.711 | **0.737** 🥇 |
 
 
 For all metrics the bigger value the better. In this 4-model comparison, DinoV2 + CDETR gives the strongest overall AP/AR results, which supports the initial assumption derived from the validation loss curves.
